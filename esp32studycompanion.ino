@@ -1,6 +1,9 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SH110X.h>
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
 
 // OLED
 #define SCREEN_WIDTH 128
@@ -11,13 +14,13 @@ Adafruit_SH1106G display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 #define SCL_PIN 22
 
 // Buttons
-#define BTN_LEFT  32
-#define BTN_OK    33
+#define BTN_LEFT 32
+#define BTN_OK   33
 
 // Timer
 unsigned long startTime = 0;
 unsigned long elapsedTime = 0;
-unsigned long duration = 1500000; // default 25 min
+unsigned long duration = 1500000;
 bool running = false;
 
 // Screens
@@ -27,28 +30,50 @@ bool running = false;
 int screen = 0;
 int menuIndex = 0;   // 0=STUDY, 1=FORTUNE
 
-// Fortune answers
+// BLE
+BLECharacteristic *pCharacteristic;
+
+// Fortune
 const char* fortunes[] = {
   "Yes.",
   "Very likely.",
-  "Probably.",
-  "Maybe.",
+  "Probably bruh.",
+  "Maybe, idk man.",
   "Keep studying.",
-  "Not yet.",
+  "NOPE HAHAHA.",
   "Study harder."
 };
 
 String currentFortune = "";
 bool fortuneGenerated = false;
 
-// SETUP
+// ---------- BLE CALLBACK ----------
+class MyCallbacks: public BLECharacteristicCallbacks {
+  void onWrite(BLECharacteristic *pCharacteristic) {
+    String value = pCharacteristic->getValue();
+
+    if (value.length() > 0) {
+      int minutes = value.toInt();
+
+      if (minutes > 0 && minutes <= 60) {
+        duration = minutes * 60000;
+        startTime = millis();
+        elapsedTime = 0;
+        running = true;
+        screen = 1;
+      }
+    }
+  }
+};
+
+// ---------- SETUP ----------
 void setup() {
   Serial.begin(115200);
 
   Wire.begin(SDA_PIN, SCL_PIN);
 
-  if (!display.begin(0x3C, false)) {
-    while (1);  // Stop here if display init fails
+  if (!display.begin(0x3C, true)) {
+    while (1);
   }
 
   display.clearDisplay();
@@ -60,9 +85,23 @@ void setup() {
   pinMode(BTN_OK, INPUT_PULLUP);
 
   randomSeed(micros());
+
+  // BLE
+  BLEDevice::init("PomodoroESP32");
+  BLEServer *pServer = BLEDevice::createServer();
+  BLEService *pService = pServer->createService("1234");
+
+  pCharacteristic = pService->createCharacteristic(
+    "5678",
+    BLECharacteristic::PROPERTY_WRITE
+  );
+
+  pCharacteristic->setCallbacks(new MyCallbacks());
+  pService->start();
+  BLEDevice::getAdvertising()->start();
 }
 
-// DRAW MENU
+// ---------- DRAW MENU ----------
 void drawMenu() {
   display.clearDisplay();
   display.setTextSize(2);
@@ -78,13 +117,12 @@ void drawMenu() {
   display.display();
 }
 
-//DRAW TIMER 
+// ---------- DRAW TIMER ----------
 void drawTimer(int minutes, int seconds) {
   display.clearDisplay();
 
   display.setTextSize(1);
   display.setCursor(28, 2);
-  display.print("Study Timer");
 
   display.setTextSize(2);
   display.setCursor(22, 24);
@@ -98,13 +136,12 @@ void drawTimer(int minutes, int seconds) {
   display.display();
 }
 
-// DRAW FORTUNE
+// ---------- DRAW FORTUNE ----------
 void drawFortune(const String &msg) {
   display.clearDisplay();
 
   display.setTextSize(1);
   display.setCursor(20, 2);
-  display.print("Study Fortune");
 
   display.setCursor(0, 18);
   display.print("Will I pass");
@@ -118,17 +155,18 @@ void drawFortune(const String &msg) {
   display.display();
 }
 
-//GENERATE FORTUNE
+// ---------- GENERATE FORTUNE ----------
 void generateFortune() {
   int index = random(0, 7);
   currentFortune = fortunes[index];
   fortuneGenerated = true;
 }
 
-// LOOP
+// ---------- LOOP ----------
 void loop() {
+  Serial.println(digitalRead(BTN_LEFT)); // problem was button connection :D
 
-  // MENU 
+  // -------- MENU --------
   if (screen == 0) {
     if (digitalRead(BTN_LEFT) == LOW) {
       menuIndex++;
@@ -149,7 +187,7 @@ void loop() {
     drawMenu();
   }
 
-  // TIMER 
+  // -------- TIMER --------
   else if (screen == 1) {
     if (digitalRead(BTN_OK) == LOW) {
       if (!running) {
@@ -178,7 +216,7 @@ void loop() {
     drawTimer(minutes, seconds);
   }
 
-  // FORTUNE
+  // -------- FORTUNE --------
   else if (screen == 2) {
     if (!fortuneGenerated) {
       generateFortune();
