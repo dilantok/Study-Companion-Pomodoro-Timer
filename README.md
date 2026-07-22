@@ -2,24 +2,26 @@
 
 ## 🌟 Summary
 
-Companion Study Timer is an ESP32-based Pomodoro timer built with a 1.3-inch SH1106 OLED display. It includes a simple two-button menu, a study countdown, a random exam fortune screen, and Bluetooth Low Energy (BLE) support for setting the timer duration from another device.
+Companion Study Timer is a compact ESP32-based Pomodoro device built with a 1.3-inch SH1106 OLED display. It combines a study countdown, a random exam fortune screen, Bluetooth Low Energy timer control, and an audible alarm in a simple two-button interface.
 
 This project is part of my personal robotics development journey towards building an AI-based robotic companion.
 
 ## ✨ Features
 
-- Pomodoro-style study countdown
-- Pause and resume support
-- Menu controlled with two push buttons
+- 25-minute Pomodoro timer by default
+- Start, pause, resume, and restart controls
+- `STUDY`, `PAUSED`, and `DONE!` timer states
+- Three-beep alarm when a study session finishes
 - Random exam fortune generator
 - BLE timer configuration from 1 to 60 minutes
-- Compact 128x64 OLED interface
+- Two-button menu designed for a 128x64 OLED display
 
 ## 🛠️ Hardware Used
 
 - ESP32 development board
 - 1.3-inch SH1106 OLED display (128x64, I2C)
 - 2 push buttons
+- Active buzzer
 - Breadboard
 - Jumper wires
 - USB cable
@@ -40,32 +42,41 @@ This project is part of my personal robotics development journey towards buildin
 | Button | ESP32 pin | Function |
 | --- | --- | --- |
 | Left | GPIO 32 | Change selection / return to menu |
-| OK | GPIO 33 | Confirm / pause / generate fortune |
+| OK | GPIO 33 | Confirm / start / pause / generate fortune |
 
-Each button must be connected between its GPIO pin and **GND**. The sketch uses the ESP32's internal pull-up resistors with `INPUT_PULLUP`, so no external resistor is required.
+Connect each push button between its GPIO pin and **GND**. The sketch uses `INPUT_PULLUP`, so an external pull-up resistor is not required.
 
-> On a four-pin tactile button, the two pins on each side are internally connected. Use pins from opposite sides of the switch. When the button is not pressed, the GPIO should read `HIGH`; when pressed, it should read `LOW`.
+> On a four-pin tactile button, the two pins on each side are already connected internally. Use pins from opposite sides of the switch. An unpressed button should read `HIGH`, and a pressed button should read `LOW`.
+
+### Active Buzzer
+
+| Buzzer pin | ESP32 pin |
+| --- | --- |
+| Positive (`+`) | GPIO 25 |
+| Negative (`-`) | GND |
+
+The current sketch is designed for a small active buzzer. Use a transistor driver if the buzzer requires more current or a higher voltage than an ESP32 GPIO can safely provide.
 
 ## 📚 Required Libraries
 
-Install the following libraries from the Arduino IDE Library Manager:
+Install these libraries using the Arduino IDE Library Manager:
 
 - Adafruit GFX Library
 - Adafruit SH110X
 - ESP32 BLE Arduino (included with the ESP32 Arduino core)
 
-Also install the **ESP32 by Espressif Systems** board package from Arduino IDE's Boards Manager.
+Also install **ESP32 by Espressif Systems** using the Arduino IDE Boards Manager.
 
-## 🚀 Uploading the Project
+## 🚀 Installation
 
-1. Connect the components according to the wiring tables above.
+1. Assemble the circuit according to the wiring tables.
 2. Open the Arduino sketch in Arduino IDE.
-3. Select your ESP32 board from **Tools > Board**.
+3. Select the correct ESP32 board under **Tools > Board**.
 4. Select the correct serial port.
 5. Compile and upload the sketch.
-6. The main menu will appear on the OLED display.
+6. The `STUDY` and `FORTUNE` menu will appear on the OLED.
 
-The display uses I2C address `0x3C`. If your display does not turn on, scan the I2C bus and update the address in the sketch if necessary.
+The display uses the I2C address `0x3C`. If the OLED does not turn on, run an I2C scanner and update the address in the sketch if necessary.
 
 ## 🎮 Controls
 
@@ -77,42 +88,44 @@ The display uses I2C address `0x3C`. If your display does not turn on, scan the 
 ### Study Timer
 
 - Press **OK** to start, pause, or resume the countdown.
-- Press **Left** to reset the timer and return to the main menu.
-- The default duration is 25 minutes.
+- Press **Left** to reset the current session and return to the menu.
+- When the countdown reaches `00:00`, the display shows `DONE!` and the buzzer sounds three times.
+- Press **OK** after completion to restart the timer from the beginning.
 
 ### Fortune Screen
 
-- Press **OK** to generate a new fortune.
+- Press **OK** to generate a new random fortune.
 - Press **Left** to return to the main menu.
 
 ## 📶 BLE Timer Control
 
-The ESP32 advertises with the name:
+The ESP32 advertises as:
 
 ```text
 PomodoroESP32
 ```
-
-BLE identifiers:
 
 | Type | UUID |
 | --- | --- |
 | Service | `1234` |
 | Write characteristic | `5678` |
 
-Write a number from `1` to `60` to characteristic `5678`. The number represents minutes. After receiving a valid value, the ESP32 switches to the timer screen and starts the countdown automatically.
+Write a number between `1` and `60` to characteristic `5678`. The value represents the study duration in minutes. After receiving a valid value, the ESP32 opens the timer screen and starts the countdown automatically.
 
-You can test this feature with a BLE utility such as nRF Connect.
+The BLE feature can be tested using an application such as nRF Connect.
 
-## 🖥️ Screens
+## 🖥️ Display Modes
 
-- **Study:** Displays the remaining time in `MM:SS` format.
-- **Fortune:** Displays a randomly selected answer to the question, “Will I pass the exam?”
+- **Menu:** Selects the study timer or fortune generator.
+- **Study:** Shows the remaining time in `MM:SS` format.
+- **Paused:** Keeps the current remaining time until the session is resumed.
+- **Done:** Shows that the session has finished and triggers the buzzer.
+- **Fortune:** Displays a randomly selected answer to “Will I pass the exam?”
 
 ## 💡 Possible Improvements
 
-- Add a buzzer or vibration motor when the timer finishes
+- Add automatic study and break cycles
 - Save the selected duration in non-volatile memory
-- Add configurable study and break sessions
-- Create a companion mobile application for BLE control
-- Replace blocking button delays with debounced edge detection
+- Add debounced, non-blocking button handling
+- Add buzzer enable/disable and volume controls
+- Build a companion mobile application for BLE control
