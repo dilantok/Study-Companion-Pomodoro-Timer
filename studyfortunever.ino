@@ -228,22 +228,28 @@ void generateFortune() {
 
 // ---------- PLAY ALARM ----------
 void playAlarm() {
-  if (alarmPlayed) {
-    return;
-  }
+  if (alarmPlayed) return;
 
   alarmPlayed = true;
 
-  // Three short beeps
-  for (int i = 0; i < 3; i++) {
-    digitalWrite(BUZZER_PIN, HIGH);
-    delay(250);
+  int notes[] = {
+    1319, 1568, 1976, 2637,
+    1976, 2637
+  };
 
-    digitalWrite(BUZZER_PIN, LOW);
-    delay(150);
+  int durations[] = {
+    100, 100, 100, 220,
+    100, 300
+  };
+
+  for (int i = 0; i < 6; i++) {
+    tone(BUZZER_PIN, notes[i]);
+    delay(durations[i]);
+
+    noTone(BUZZER_PIN);
+    delay(35);
   }
 }
-
 // ---------- LOOP ----------
 void loop() {
 
