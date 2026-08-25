@@ -45,7 +45,7 @@ This project is part of my personal robotics development journey towards buildin
 
 ## 🛠️ Hardware Used
 
-- ESP32 Development Board
+- ESP32 Dev Board
 - 1.3-inch SH1106 OLED Display (128×64, I2C)
 - 2 Push Buttons
 - Active Buzzer
