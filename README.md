@@ -1,176 +1,140 @@
-# ⏱️ Companion Study Timer
+# Companion Study Timer
 
 <p align="center">
-  <img src="assets/companiongif.gif" alt="Companion Study Timer Demo" width="700">
+  <img src="assets/companiongif.gif" alt="Companion Study Timer demonstration" width="700">
 </p>
+
+An ESP32-powered Pomodoro timer with a two-button interface, Bluetooth Low Energy configuration, an OLED display, a completion alarm, and a light-hearted exam fortune generator.
+
+I built this personal project to explore embedded C++, hardware and software integration, event-driven input, and wireless communication while creating a study tool I could use away from my laptop.
+
+## What it does
+
+- Runs a 25-minute study timer by default
+- Starts, pauses, resumes, resets, and restarts sessions
+- Shows clear `STUDY`, `PAUSED`, and `DONE!` states
+- Plays a short melody when a session finishes
+- Accepts custom durations from 1 to 60 minutes over BLE
+- Generates random exam fortunes from a separate screen
+- Debounces both physical buttons without blocking the main loop
 
 <p align="center">
-  <strong>An ESP32-powered Pomodoro timer with BLE control and a fun fortune generator.</strong>
+  <img src="assets/timepaused.jpg" alt="Paused study timer" width="48%">
+  <img src="assets/fortune.jpg" alt="Exam fortune screen" width="48%">
 </p>
 
----
+## Design
 
-## 🌟 Summary
+The firmware uses a small state machine with three application screens: menu, timer, and fortune. Each responsibility is isolated so that the main sketch coordinates components instead of containing every implementation detail.
 
-Companion Study Timer is a compact ESP32-based Pomodoro device built with a 1.3-inch SH1106 OLED display. It combines a study countdown, a random exam fortune screen, Bluetooth Low Energy timer control, and an audible alarm in a simple two-button interface.
+| Component | Responsibility |
+| --- | --- |
+| `StudyCompanionTimer.ino` | Application setup, screen transitions, and event coordination |
+| `TimerController` | Timer state, elapsed time, pausing, restarting, and completion detection |
+| `DisplayView` | OLED initialization and rendering |
+| `BleTimerService` | BLE setup, input validation, and passing duration requests to the main loop |
+| `Button` | Debounced, edge-triggered button input |
+| `FortuneGenerator` | Random fortune selection |
+| `Alarm` | Buzzer initialization and completion melody |
+| `Config` | Hardware pins, timing limits, and BLE identifiers |
 
-This project is part of my personal robotics development journey towards building an AI-based robotic companion.
+The countdown is based on `millis()` rather than a one-second delay. BLE callbacks queue valid duration requests, then the main loop applies them. This keeps timer state changes in one place and avoids updating the user interface directly from the BLE callback.
 
----
+## Hardware
 
-## 📸 Project Preview
+- ESP32 development board
+- 1.3-inch SH1106 OLED display, 128 x 64, I2C
+- Two push buttons
+- Piezo buzzer
+- Breadboard and jumper wires
+- USB cable
 
-<p align="center">
-  <img src="assets/timepaused.jpg" alt="Study Timer" width="48%">
-  <img src="assets/fortune.jpg" alt="Fortune Screen" width="48%">
-</p>
+## Wiring
 
-<p align="center">
-  <em>Study Timer mode (left) and Fortune Generator mode (right).</em>
-</p>
+### OLED display
 
----
-
-## ✨ Features
-
-- 25-minute Pomodoro timer by default
-- Start, pause, resume, and restart controls
-- `STUDY`, `PAUSED`, and `DONE!` timer states
-- Three-beep alarm when a study session finishes
-- Random exam fortune generator
-- BLE timer configuration from 1 to 60 minutes
-- Two-button menu designed for a 128×64 OLED display
-
----
-
-## 🛠️ Hardware Used
-
-- ESP32 Dev Board
-- 1.3-inch SH1106 OLED Display (128×64, I2C)
-- 2 Push Buttons
-- Active Buzzer
-- Breadboard
-- Jumper Wires
-- USB Cable
-
----
-
-## 🔌 Wiring
-
-### OLED Display
-
-| OLED Pin | ESP32 Pin |
-|----------|-----------|
+| OLED pin | ESP32 connection |
+| --- | --- |
 | VCC | 3.3V |
 | GND | GND |
 | SCL | GPIO 22 |
 | SDA | GPIO 21 |
 
-### Push Buttons
+### Controls and buzzer
 
-| Button | ESP32 Pin | Function |
-|--------|-----------|----------|
-| Left | GPIO 32 | Change selection / Return |
-| OK | GPIO 33 | Confirm / Start / Pause |
+| Component | ESP32 connection | Purpose |
+| --- | --- | --- |
+| Left button | GPIO 32 to GND | Change selection or return |
+| OK button | GPIO 33 to GND | Confirm, start, or pause |
+| Buzzer positive | GPIO 25 | Completion melody |
+| Buzzer negative | GND | Ground |
 
-Both buttons are connected between the GPIO pin and **GND**. The sketch uses `INPUT_PULLUP`, so no external pull-up resistor is required.
+The buttons use the ESP32's internal pull-up resistors, so no external pull-up resistors are required.
 
-### Active Buzzer
+## Build and upload
 
-| Buzzer Pin | ESP32 Pin |
-|------------|-----------|
-| + | GPIO 25 |
-| - | GND |
+### Requirements
 
----
-
-## 📚 Required Libraries
-
-Install using the Arduino IDE Library Manager:
-
+- Arduino IDE 2.x
+- ESP32 by Espressif Systems, installed through Boards Manager
 - Adafruit GFX Library
 - Adafruit SH110X
-- ESP32 BLE Arduino
 
-Also install:
+The BLE classes are provided by the ESP32 Arduino core.
 
-- ESP32 by Espressif Systems (Boards Manager)
+### Steps
 
----
+1. Clone or download this repository.
+2. Open `firmware/StudyCompanionTimer/StudyCompanionTimer.ino` in Arduino IDE.
+3. Select the appropriate ESP32 board and serial port.
+4. Install the required Adafruit libraries through Library Manager.
+5. Verify and upload the sketch.
 
-## 🚀 Installation
+## Controls
 
-1. Assemble the hardware.
-2. Open the Arduino sketch.
-3. Select your ESP32 board.
-4. Select the correct serial port.
-5. Upload the sketch.
-6. Enjoy your Companion Study Timer!
+| Screen | Left button | OK button |
+| --- | --- | --- |
+| Main menu | Switch between `STUDY` and `FORTUNE` | Open selection |
+| Study timer | Reset and return to menu | Start, pause, resume, or restart |
+| Fortune | Return to menu | Generate another fortune |
 
----
+## BLE timer control
 
-## 🎮 Controls
-
-### Main Menu
-
-- **Left Button:** Switch between `STUDY` and `FORTUNE`
-- **OK Button:** Open selected menu
-
-### Study Timer
-
-- **OK:** Start / Pause / Resume
-- **Left:** Reset and return to menu
-
-### Fortune Screen
-
-- **OK:** Generate a new fortune
-- **Left:** Return to menu
-
----
-
-## 📶 BLE Timer Control
-
-Device Name:
-
-```text
-PomodoroESP32
-```
+The ESP32 advertises as `PomodoroESP32`.
 
 | Type | UUID |
-|------|------|
+| --- | --- |
 | Service | `1234` |
-| Characteristic | `5678` |
+| Writable characteristic | `5678` |
 
-Write a number between **1–60** to the characteristic to automatically start a timer with that duration.
+Using a BLE client, write a whole number from `1` to `60` to the characteristic. A valid value changes the duration, opens the timer screen, and starts the countdown immediately. Invalid or out-of-range values are ignored.
 
----
+## Repository structure
 
-## 🖥️ Display Modes
+```text
+.
+├── assets/
+│   ├── companiongif.gif
+│   ├── fortune.jpg
+│   └── timepaused.jpg
+├── firmware/
+│   └── StudyCompanionTimer/
+│       ├── StudyCompanionTimer.ino
+│       ├── Alarm.h / Alarm.cpp
+│       ├── BleTimerService.h / BleTimerService.cpp
+│       ├── Button.h / Button.cpp
+│       ├── DisplayView.h / DisplayView.cpp
+│       ├── FortuneGenerator.h / FortuneGenerator.cpp
+│       ├── TimerController.h / TimerController.cpp
+│       ├── AppScreen.h
+│       └── Config.h
+└── README.md
+```
 
-- 📋 Main Menu
-- ⏱️ Study Timer
-- ⏸️ Paused
-- ✅ Done
-- 🔮 Fortune Generator
+## Author and contribution
 
----
+Designed, wired, and programmed by **Dilan Tok** as an individual project.
 
-## 💡 Future Improvements
+Computer Science and Artificial Intelligence student at the University of Sussex
 
-- Automatic Pomodoro work/break cycles
-- Save settings using EEPROM
-- Better button debouncing
-- Mobile application for BLE control
-- Battery-powered portable version
-- AI companion integration
-
----
-
-## 👨‍💻 Author
-
-**Dilan Tok**
-
-Computer Science & Artificial Intelligence Student  
-University of Sussex
-
-GitHub: https://github.com/dilantok
+[GitHub profile](https://github.com/dilantok)
